@@ -1,0 +1,149 @@
+---
+title: Introduction to Generalized Additive Models
+author: "Nick Giangreco"
+output: html_document
+---
+
+```{r setup,message=F,warning=F}
+knitr::opts_chunk$set(echo = TRUE,dpi = 400)
+```
+
+# Motorcycle crash data: linear approach
+
+
+```{r}
+
+mcycle <- MASS::mcycle
+
+# Examine the mcycle data frame
+head(mcycle)
+plot(mcycle$times,mcycle$accel)
+
+# Fit a linear model
+lm_mod <- lm(accel ~ times, data = mcycle)
+
+# Visualize the model
+termplot(lm_mod, partial.resid = TRUE, se = TRUE)
+
+```
+
+# Motorcycle crash data: non-linear approach
+
+```{r}
+
+library(mgcv)
+
+# Fit the model
+gam_mod <- gam(accel ~ s(times), data = mcycle)
+
+# Plot the results
+plot(gam_mod, residuals = TRUE, pch = 1)
+
+```
+
+# Parts of a non-linear function
+
+```{r}
+
+coef(gam_mod)
+
+```
+
+The smooth is made up of 9 basis functions, each with their own coefficient. A GAM with just two variables can have many coefficients, which means they require a bit more data than linear models.
+
+# Setting complexity of the motorcycle model
+
+```{r}
+
+# Fit a GAM with 3 basis functions
+gam_mod_k3 <- gam(accel ~ s(times, k = 3), data = mcycle)
+
+# Fit with 20 basis functions
+gam_mod_k20 <- gam(accel ~ s(times, k = 20), data = mcycle)
+
+# Visualize the GAMs
+par(mfrow = c(1, 2))
+plot(gam_mod_k3, residuals = TRUE, pch = 1)
+plot(gam_mod_k20, residuals = TRUE, pch = 1)
+
+
+```
+
+# Using smooth parameters to avoid overffitting
+
+```{r}
+
+gam_mod <- gam(accel ~ s(times), data = mcycle, method = "REML")
+gam_mod$sp
+
+# Fix the smoothing parameter at 0.1
+gam_mod_s1 <- gam(accel ~ s(times), data = mcycle, sp = 0.1)
+
+# Fix the smoothing parameter at 0.0001
+gam_mod_s2 <- gam(accel ~ s(times), data = mcycle, sp =0.0001)
+
+# Plot both models
+par(mfrow = c(2, 1))
+plot(gam_mod_s1, residuals = TRUE, pch = 1)
+plot(gam_mod_s2, residuals = TRUE, pch = 1)
+
+```
+
+# Complexity and smoothing together
+
+```{r}
+
+# Fit the GAM
+gam_mod_sk <- gam(accel ~ s(times, k=50), data=mcycle, sp=0.0001)
+
+# Visualize the model
+plot(gam_mod_sk, residuals = TRUE, pch = 1)
+
+
+```
+
+# Multivariate GAMs of auto performance
+
+```{r}
+
+library(gamair)
+data("mpg", package="gamair")
+
+# Examine the data
+head(mpg)
+str(mpg)
+
+# Fit the model
+mod_city <- gam(city.mpg ~ s(weight) + s(length) + s(price), 
+                data = mpg, method = "REML")
+
+# Plot the model
+plot(mod_city, pages = 1)
+
+```
+
+# Adding categorical to the auto performance plot
+
+```{r}
+
+mod_city2 <- gam(city.mpg ~ s(weight) + s(length) + s(price) + fuel + drive + style, 
+                 data = mpg, method = "REML")
+
+# Plot the model
+plot(mod_city2, all.terms = TRUE, pages = 1)
+
+```
+
+# Category-level smooths for different auto types
+
+```{r}
+
+# Fit the model
+mod_city3 <- gam(city.mpg ~ s(weight, by=drive) + s(length, by=drive) + s(price, by=drive) + drive, 
+                 data = mpg, method = "REML")
+
+# Plot the model
+plot(mod_city3, pages = 1)
+
+
+```

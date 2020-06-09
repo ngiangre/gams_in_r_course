@@ -1,0 +1,126 @@
+---
+title: Logistic GAMs for Classification
+author: "Nick Giangreco"
+output: html_document
+---
+
+```{r setup,message=F,warning=F}
+knitr::opts_chunk$set(echo = TRUE,dpi = 400)
+```
+
+# Classifying purchasing behavior
+
+```{r}
+
+library(mgcv)
+csale <- readRDS("csale.rds")
+
+# Examine the csale data frame
+head(csale)
+str(csale)
+
+# Fit a logistic model
+log_mod <- gam(purchase ~ s(mortgage_age), data = csale,
+               family = binomial,
+               method = "REML")
+
+# Calculate the probability at the mean
+plogis(coef(log_mod))
+
+```
+
+# Purchase behavior with multiple smooths
+
+```{r}
+
+formula = as.formula(paste0("purchase ~ ",paste0("s(",colnames(csale)[2:ncol(csale)],")",collapse=" + ")))
+
+# Fit a logistic model
+log_mod2 <- gam(formula = formula,
+                data = csale,
+                family = binomial,
+                method = "REML")
+
+# View the summary
+summary(log_mod2)
+
+```
+
+# Visualising influences on purchasing probability
+
+```{r}
+
+set.seed(0)
+log_mod2 <- gam(purchase ~ s(n_acts) + s(bal_crdt_ratio) +
+                  s(avg_prem_balance) + s(retail_crdt_ratio) +
+                  s(avg_fin_balance)  + s(mortgage_age) + s(cred_limit),
+                data = csale,
+                family = binomial,
+                method = "REML")
+
+# Plot on the log-odds scale
+plot(log_mod2, pages = 1)
+plot(log_mod2, pages = 1, trans = plogis)
+plot(log_mod2, pages = 1, trans = plogis,
+     shift = coef(log_mod2)[1])
+# Plot with intercept uncertainty
+plot(log_mod2, pages = 1, trans = plogis,
+     shift = coef(log_mod2)[1], seWithMean = T)
+```
+
+# Predicting purchasing behavior and uncertainty
+
+```{r}
+
+new_credit_data <- readRDS("new_credit_data.rds")
+log_mod2 <- gam(purchase ~ s(n_acts) + s(bal_crdt_ratio) +
+                  s(avg_prem_balance) + s(retail_crdt_ratio) +
+                  s(avg_fin_balance)  + s(mortgage_age) + s(cred_limit),
+                data = csale,
+                family = binomial,
+                method = "REML")
+
+# Calculate predictions and errors
+predictions <- predict(log_mod2, newdata = new_credit_data,
+                       type = "link", se.fit = T)
+
+# Inspect the predictions
+predictions
+
+# Calculate high and low prediction intervals
+high_pred <- predictions$fit + predictions$se.fit
+low_pred <- predictions$fit - predictions$se.fit
+
+# Convert intervals to probability scale
+high_prob <- plogis(high_pred)
+low_prob <- plogis(low_pred)
+
+# Inspect
+high_prob
+low_prob
+```
+
+# Explaining individual behaviors
+
+```{r}
+
+log_mod2 <- gam(purchase ~ s(n_acts) + s(bal_crdt_ratio) +
+                  s(avg_prem_balance) + s(retail_crdt_ratio) +
+                  s(avg_fin_balance)  + s(mortgage_age) + s(cred_limit),
+                data = csale,
+                family = binomial,
+                method = "REML")
+
+# Predict from the model
+prediction_1 <- predict(log_mod2,
+                        newdata = new_credit_data,
+                        type = "terms")
+
+# Inspect
+prediction_1
+
+```
+
+
+
+
